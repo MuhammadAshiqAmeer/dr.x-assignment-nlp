@@ -22,3 +22,23 @@ def evaluate_summary(reference, summary):
     scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
     scores = scorer.score(reference, summary)
     return scores
+
+
+if __name__ == "__main__":
+    print("Summarization and Evaluation System Ready.")
+    
+    # Example text (replace with your own text to test)
+    text_to_summarize = """
+    Stable isotope analysis (SIA) is used extensively in marine and ecological studies.
+    The method uses isotopic compositions of elements such as carbon (δ13C), nitrogen (δ15N), and oxygen (δ18O) to study various aspects like animal movement, trophic dynamics, and ecosystem function.
+    The use of stable isotopes in oceanography helps identify the sources of organic carbon in marine ecosystems and track nutrient pathways.
+    """
+
+    # Summarize the text
+    summary = summarize_text(text_to_summarize)
+    print(f"Summary: {summary}\n")
+    
+    # Evaluate summary (example reference)
+    reference_text = "This study uses stable isotope analysis to track the movement and trophic interactions of marine organisms, focusing on isotopes like δ13C and δ15N."
+    evaluation_scores = evaluate_summary(reference_text, summary)
+    print(f"ROUGE Scores: {evaluation_scores}")
