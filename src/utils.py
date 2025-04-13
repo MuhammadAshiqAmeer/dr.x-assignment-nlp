@@ -26,4 +26,5 @@ def measure_performance(text, task_func, task_name):
     
     with open("outputs/performance.json", "a") as f:
         json.dump({task_name: {"tokens_per_second": tokens_per_second}}, f)
+        f.write("\n")
     return result
