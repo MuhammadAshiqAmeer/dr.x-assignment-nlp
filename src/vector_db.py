@@ -2,6 +2,7 @@ import faiss
 import json
 import numpy as np
 import os
+from pathlib import Path
 from ollama import Client
 
 def create_vector_db(chunks, model_name="nomic-embed-text"):
@@ -30,7 +31,8 @@ def create_vector_db(chunks, model_name="nomic-embed-text"):
     return index, metadata
 
 if __name__ == "__main__":
-    chunks_dir = os.path.join("..","outputs", "chunks")
+    base_dir = Path(__file__).parent.parent
+    chunks_dir = os.path.join(base_dir,"outputs", "chunks")
 
     all_chunks = []
     if not os.path.exists(chunks_dir):

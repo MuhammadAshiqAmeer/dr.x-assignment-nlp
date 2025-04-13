@@ -3,6 +3,7 @@ from docx import Document
 import PyPDF2
 import pandas as pd
 from utils import save_text
+from pathlib import Path
 
 def extract_text_from_file(file_path):
     """Extract text from various file formats."""
@@ -46,7 +47,8 @@ def extract_text_from_file(file_path):
     
 
 if __name__ == "__main__":
-    data_dir = os.path.join("..",'data')
+    base_dir = Path(__file__).parent.parent
+    data_dir = os.path.join(base_dir,'data')
     
     if not os.path.exists(data_dir):
         print(f"Directory '{data_dir}' does not exist.")
