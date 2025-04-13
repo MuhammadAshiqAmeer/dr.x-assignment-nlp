@@ -17,14 +17,29 @@ def save_text(text, output_path):
 
 def measure_performance(text, task_func, task_name):
     """Measure tokens per second for a task."""
+    import tiktoken
     encoding = tiktoken.get_encoding("cl100k_base")
     tokens = len(encoding.encode(text))
+
     start_time = time.time()
     result = task_func(text)
     elapsed_time = time.time() - start_time
     tokens_per_second = tokens / elapsed_time if elapsed_time > 0 else 0
-    
-    with open("outputs/performance.json", "a") as f:
-        json.dump({task_name: {"tokens_per_second": tokens_per_second}}, f)
-        f.write("\n")
+
+    performance_file = "outputs/performance.json"
+    try:
+        if os.path.exists(performance_file):
+            with open(performance_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            data = []
+    except json.JSONDecodeError:
+        data = []
+
+    data.append({task_name: {"tokens_per_second": tokens_per_second}})
+
+    with open(performance_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
     return result
+
