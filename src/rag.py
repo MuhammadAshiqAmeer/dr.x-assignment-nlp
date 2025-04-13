@@ -12,7 +12,7 @@ class RAGSystem:
         with open(metadata_path, "r", encoding="utf-8") as f:
             self.metadata = json.load(f)
 
-        self.llm = OllamaLLM(model="llama3:8b")  # Consider "llama3" if issues persist
+        self.llm = OllamaLLM(model="llama3:8b")
         self.embedder = Client()
 
         self.prompt = PromptTemplate.from_template(
