@@ -4,7 +4,7 @@ from ollama import Client
 import json
 
 class RAGSystem:
-    def __init__(self, index_path="outputs/vector_db.faiss", metadata_path="outputs/metadata.json"):
+    def __init__(self, index_path="../outputs/vector_db.faiss", metadata_path="../outputs/metadata.json"):
         self.ollama = Client()
         self.index = faiss.read_index(index_path)
         with open(metadata_path, 'r', encoding='utf-8') as f:

@@ -23,8 +23,8 @@ def create_vector_db(chunks, model_name="nomic-embed-text"):
 
     # Save index and metadata
     os.makedirs("outputs", exist_ok=True)
-    faiss.write_index(index, os.path.join("outputs", "vector_db.faiss"))
-    with open(os.path.join("outputs", "metadata.json"), "w") as f:
+    faiss.write_index(index, os.path.join("..","outputs", "vector_db.faiss"))
+    with open(os.path.join("..","outputs", "metadata.json"), "w") as f:
         json.dump(metadata, f, indent=4)
 
     return index, metadata
