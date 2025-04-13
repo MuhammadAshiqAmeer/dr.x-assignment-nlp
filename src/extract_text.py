@@ -4,7 +4,7 @@ from docx import Document
 import pandas as pd
 import PyPDF2
 import fitz  # PyMuPDF
-from utils import save_text
+from src.utils import save_text
 
 
 def extract_text_from_file(file_path):
@@ -13,7 +13,11 @@ def extract_text_from_file(file_path):
         extension = os.path.splitext(file_path)[1].lower()
         text_output = []
 
-        if extension == '.docx':
+        if extension == '.txt':
+            with open(file_path, 'r', encoding='utf-8') as f:
+                text_output.append(f.read())
+
+        elif extension == '.docx':
             doc = Document(file_path)
             for para in doc.paragraphs:
                 text_output.append(para.text)
@@ -51,8 +55,13 @@ def extract_text_from_file(file_path):
             raise ValueError(f"Unsupported file format: {extension}")
 
         extracted_text = '\n'.join([t for t in text_output if t.strip()])
-        save_path = file_path.replace("data", "outputs/extracted")
-        save_text(extracted_text, save_path)
+        # Safely create an output path using the original filename
+        relative_name = Path(file_path).stem + ".txt"
+        output_dir = Path("outputs/extracted")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        save_path = output_dir / relative_name
+
+        save_text(extracted_text, str(save_path))
         return extracted_text
 
     except Exception as e:
