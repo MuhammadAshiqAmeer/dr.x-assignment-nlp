@@ -16,13 +16,17 @@ class RAGSystem:
         self.embedder = Client()
 
         self.prompt = PromptTemplate.from_template(
-            """You are a helpful assistant. If the question is a casual greeting (e.g., 'hello', 'hi'), greet politely and tell your purpose.  Do not generate unrelated answers.
+        """You are an intelligent assistant designed to answer questions **based on the provided context only**.
 
-            Context:
-            {context}
+        Context:
+        {context}
 
-            User: {question}
-            Assistant:"""
+        Instructions:
+        - Do **not** assume the identity of the person in the context (e.g., resume).
+        - If the user greets (e.g., "hello", "hi"), respond politely(maximum 15 words).").
+
+        User: {question}
+        Assistant:"""
         )
 
         self.chain: Runnable = self.prompt | self.llm
@@ -39,9 +43,10 @@ class RAGSystem:
         contexts = [self.metadata[i]["text"] for i in indices[0]]
 
         # Debug retrieved contexts
-        print(f"Retrieved contexts for '{question}':")
-        for i, ctx in enumerate(contexts):
-            print(f"Context {i+1}: {ctx[:100]}... (distance: {distances[0][i]})")
+        # print(f"\nRetrieved contexts for '{question}':")
+        # for i, ctx in enumerate(contexts):
+        #     print(f"Context {i+1}: {ctx[:100]}... (distance: {distances[0][i]})")
+        # print('\n')
 
         
         # Invoke LLM
