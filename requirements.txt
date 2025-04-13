@@ -10,3 +10,5 @@ langchain-community
 langchain-ollama
 langdetect
 rouge_score
+fitz
+pymupdf
