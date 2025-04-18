@@ -152,9 +152,10 @@ Each NLP task (translation, chunking, embedding, summarizing) logs its processin
 
 ---
 
-## 💡To improve
+## 💡To improve(pending)
 
-- The .docx files contains tables. Tables can be extracted using docx library. Extracted table need to be splitted using langchains `MarkdownHeaderTextSplitter` for better results. The remaining paragraph texts using `RecursiveCharacterTextSplitter`. So chunking the table seperatly disconnects both. Need to integrate an optimal solution.
+- The `.docx` files contain tables that can be extracted using the `python-docx` library. For better results, tables should be chunked using LangChain’s `MarkdownHeaderTextSplitter`, while the remaining paragraph text can be processed using the `RecursiveCharacterTextSplitter`. However, handling tables separately currently breaks the flow between table content and the surrounding text. An optimal integration strategy to preserve this continuity is still pending.
+
 
 ## 🪪 License
 
