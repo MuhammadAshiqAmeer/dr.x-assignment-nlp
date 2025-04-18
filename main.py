@@ -12,6 +12,9 @@ from src.rag import RAGSystem
 from src.translate import translate_text
 from src.summarize import summarize_text, evaluate_summary
 from src.utils import measure_performance, save_text
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import OllamaEmbeddings
+from langchain_core.documents import Document
 
 log_path = "outputs/pipeline.log"
 os.makedirs(os.path.dirname(log_path), exist_ok=True)
@@ -24,11 +27,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+
 def init_performance_log(output_path: str = "outputs/performance.json") -> None:
     """Initialize performance.json as an empty list if it doesn't exist."""
     if not os.path.exists(output_path):
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump([], f)
+
+
 
 def log_performance(task_name: str, tokens_per_second: float, output_path: str = "outputs/performance.json") -> None:
     """Append performance metrics to performance.json."""
@@ -40,6 +47,8 @@ def log_performance(task_name: str, tokens_per_second: float, output_path: str =
     data.append({"task": task_name, "tokens_per_second": tokens_per_second, "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")})
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4)
+
+
 
 def extract_and_chunk(data_dir: str, chunks_dir: str = "outputs/chunks") -> List[dict]:
     """Extract text from files and chunk them, measuring performance."""
@@ -69,6 +78,8 @@ def extract_and_chunk(data_dir: str, chunks_dir: str = "outputs/chunks") -> List
             logger.error(f"Error processing {file_path}: {e}")
     return all_chunks
 
+
+
 def build_vector_db(chunks: List[dict], output_dir: str = "outputs") -> None:
     """Build vector database if it doesn't exist, measuring performance."""
     vector_db_path = Path(output_dir) / "vector_db"
@@ -82,6 +93,76 @@ def build_vector_db(chunks: List[dict], output_dir: str = "outputs") -> None:
         "vectordb_creation"
     )
     logger.info("Vector database created.")
+
+
+
+def add_single_document(file_path: str, vector_db_path: str = "outputs/vector_db", chunks_dir: str = "outputs/chunks") -> None:
+    """Add a single document to the existing FAISS vector store."""
+    file_path = Path(file_path)
+    if not file_path.is_file():
+        logger.error(f"File {file_path} does not exist or is not a file.")
+        return
+    if not Path(vector_db_path).exists():
+        logger.error(f"Vector database {vector_db_path} does not exist. Run pipeline with --data-dir first.")
+        return
+
+    logger.info(f"Adding single document: {file_path}")
+    try:
+        # Extract text
+        text = measure_performance(
+            str(file_path),
+            lambda _: extract_text_from_file(str(file_path)),
+            f"extract_{file_path.name}"
+        )
+        if not text or not text.strip():
+            logger.error(f"Empty or failed extraction: {file_path}")
+            return
+
+        # Chunk text
+        chunks = measure_performance(
+            text,
+            lambda t: chunk_text(t, str(file_path), max_tokens=1500, overlap_tokens=100),
+            f"chunk_{file_path.name}"
+        )
+        if not chunks:
+            logger.error(f"No chunks created for {file_path}")
+            return
+
+        # Save chunks
+        save_chunks(chunks, str(file_path), chunks_dir)
+        logger.info(f"Extracted and chunked {len(chunks)} chunks from {file_path}")
+
+        # Load existing FAISS vector store
+        embeddings = OllamaEmbeddings(model="nomic-embed-text")
+        vector_store = FAISS.load_local(vector_db_path, embeddings, allow_dangerous_deserialization=True)
+
+        # Convert chunks to LangChain Documents
+        documents = [
+            Document(
+                page_content=chunk["text"],
+                metadata={
+                    "file_name": chunk["file_name"],
+                    "page_number": chunk["page_number"],
+                    "chunk_number": chunk["chunk_number"]
+                }
+            ) for chunk in chunks
+        ]
+
+        # Add documents to vector store
+        measure_performance(
+            "".join(chunk["text"] for chunk in chunks),
+            lambda _: vector_store.add_documents(documents),
+            f"add_document_{file_path.name}"
+        )
+
+        # Save updated vector store
+        vector_store.save_local(vector_db_path)
+        logger.info(f"Added {len(chunks)} chunks from {file_path} to vector database.")
+
+    except Exception as e:
+        logger.error(f"Error adding {file_path} to vector database: {e}")
+
+
 
 def run_rag_interactive(vector_db_path: str) -> None:
     """Start an interactive RAG session."""
@@ -100,6 +181,8 @@ def run_rag_interactive(vector_db_path: str) -> None:
             print(f"\n🤖 Assistant: {answer}\n")
     except Exception as e:
         logger.error(f"RAG session failed: {e}")
+
+
 
 def process_text(text: str, file_name: str, target_lang: str = None, summary_strategy: str = None) -> Tuple[str, str, dict]:
     """Translate and/or summarize text, measuring performance."""
@@ -133,6 +216,8 @@ def process_text(text: str, file_name: str, target_lang: str = None, summary_str
 
     return translated, summary, scores
 
+
+
 def main(args: argparse.Namespace) -> None:
     """Main pipeline orchestrator."""
     start_time = time.time()
@@ -143,6 +228,12 @@ def main(args: argparse.Namespace) -> None:
     Path("outputs/chunks").mkdir(parents=True, exist_ok=True)
     Path("outputs/translated").mkdir(parents=True, exist_ok=True)
     Path("outputs/summaries").mkdir(parents=True, exist_ok=True)
+
+    # Handle adding a single document to the vector store
+    if args.add_data:
+        add_single_document(args.add_data)
+        logger.info(f"Pipeline completed in {time.time() - start_time:.2f} seconds.")
+        return
 
     # Handle single file translation/summarization
     if args.input_file:
@@ -187,7 +278,7 @@ def main(args: argparse.Namespace) -> None:
             if all_chunks:
                 build_vector_db(all_chunks)
 
-        if not (vector_db_path.exists()):
+        if not vector_db_path.exists():
             logger.error("Vector database not found. Run pipeline with data_dir first.")
             return
         
@@ -195,10 +286,13 @@ def main(args: argparse.Namespace) -> None:
 
     logger.info(f"Pipeline completed in {time.time() - start_time:.2f} seconds.")
 
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NLP Pipeline for Dr. X's Publications")
     parser.add_argument("--data-dir", help="Directory containing input files")
     parser.add_argument("--input-file", help="Single text file to translate or summarize")
+    parser.add_argument("--add-data", help="Single file to add to the vector database")
     parser.add_argument("--rag", action="store_true", help="Start interactive RAG session")
     parser.add_argument("--translate", action="store_true", help="Translate text")
     parser.add_argument("--summarize", action="store_true", help="Summarize text")
