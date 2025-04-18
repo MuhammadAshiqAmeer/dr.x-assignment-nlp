@@ -1,5 +1,5 @@
 python-docx
-PyPDF2
+pymupdf
 pandas
 openpyxl
 tiktoken
@@ -10,5 +10,5 @@ langchain-community
 langchain-ollama
 langdetect
 rouge_score
-fitz
-pymupdf
+unstructured
+networkx

@@ -1,88 +1,93 @@
 import os
 from pathlib import Path
-from docx import Document
-import pandas as pd
-import PyPDF2
-import fitz  # PyMuPDF
-from src.utils import save_text
+from langchain_community.document_loaders import (
+    UnstructuredWordDocumentLoader,
+    PyPDFLoader,
+    CSVLoader,
+    UnstructuredExcelLoader,
+    TextLoader,
+)
+from langchain_community.document_loaders.pdf import PyMuPDFLoader
 
+if os.path.basename(os.getcwd()) == "src":
+    from utils import save_text
+    output_dir = Path("../outputs/extracted")
+else:
+    from src.utils import save_text
+    output_dir = Path("outputs/extracted")
 
 def extract_text_from_file(file_path):
-    """Extract text and figure captions from various file formats."""
-    try:
+        """Extract text from various file formats using LangChain document loaders."""
+    # try:
         extension = os.path.splitext(file_path)[1].lower()
         text_output = []
 
         if extension == '.txt':
-            with open(file_path, 'r', encoding='utf-8') as f:
-                text_output.append(f.read())
+            loader = TextLoader(file_path, encoding='utf-8')
+            docs = loader.load()
+            text_output.extend([doc.page_content for doc in docs])
 
         elif extension == '.docx':
-            doc = Document(file_path)
-            for para in doc.paragraphs:
-                text_output.append(para.text)
-            for table in doc.tables:
-                for row in table.rows:
-                    row_text = ' | '.join(cell.text.strip() for cell in row.cells)
-                    text_output.append(row_text)
+            loader = UnstructuredWordDocumentLoader(file_path)
+            docs = loader.load()
+            text_output.extend([doc.page_content for doc in docs])
 
         elif extension == '.pdf':
             # Standard text extraction
-            with open(file_path, 'rb') as f:
-                reader = PyPDF2.PdfReader(f)
-                for page_num in range(len(reader.pages)):
-                    page = reader.pages[page_num]
-                    text_output.append(f"Page {page_num + 1}: {page.extract_text()}")
+            loader = PyPDFLoader(file_path)
+            docs = loader.load()
+            for doc in docs:
+                page_num = doc.metadata.get('page', 1) + 1
+                text_output.append(f"Page {page_num}: {doc.page_content}")
 
-            # EXTRA: Figure caption extraction using PyMuPDF
-            doc = fitz.open(file_path)
-            for i, page in enumerate(doc):
-                blocks = page.get_text("blocks")
-                for block in blocks:
-                    text = block[4].strip()
-                    if text.lower().startswith("figure"):
-                        caption = f"[Figure Caption - Page {i + 1}]: {text}"
-                        text_output.append(caption)
+            # Figure caption extraction using PyMuPDF
+            caption_loader = PyMuPDFLoader(file_path)
+            docs = caption_loader.load()
+            for doc in docs:
+                page_num = doc.metadata.get('page', 1) + 1
+                text = doc.page_content.strip()
+                if text.lower().startswith("figure"):
+                    caption = f"[Figure Caption - Page {page_num}]: {text}"
+                    text_output.append(caption)
 
-        elif extension in ['.csv', '.xlsx', '.xls', '.xlsm']:
-            if extension == '.csv':
-                df = pd.read_csv(file_path)
-            else:
-                df = pd.read_excel(file_path)
-            text_output.append(df.to_string(index=False))
+        elif extension == '.csv':
+            loader = CSVLoader(file_path, encoding='utf-8')
+            docs = loader.load()
+            text_output.extend([doc.page_content for doc in docs])
+
+        elif extension in ['.xlsx', '.xls', '.xlsm']:
+            # Explicitly use UnstructuredExcelLoader for Excel files
+            loader = UnstructuredExcelLoader(file_path, mode="elements")
+            docs = loader.load()
+            text_output.extend([doc.page_content for doc in docs])
 
         else:
             raise ValueError(f"Unsupported file format: {extension}")
 
         extracted_text = '\n'.join([t for t in text_output if t.strip()])
-        # Safely create an output path using the original filename
         relative_name = Path(file_path).stem + ".txt"
-        output_dir = Path("outputs/extracted")
         output_dir.mkdir(parents=True, exist_ok=True)
         save_path = output_dir / relative_name
 
         save_text(extracted_text, str(save_path))
         return extracted_text
 
-    except Exception as e:
-        print(f"Error processing {file_path}: {e}")
-        return None
-
-    
+    # except Exception as e:
+    #     print(f"Error processing {file_path}: {e}")
+    #     return None
 
 if __name__ == "__main__":
     base_dir = Path(__file__).parent.parent
-    data_dir = os.path.join(base_dir,'data')
-    
-    if not os.path.exists(data_dir):
+    data_dir = base_dir / "data"
+
+    if not data_dir.exists():
         print(f"Directory '{data_dir}' does not exist.")
     else:
-        for root, _, files in os.walk(data_dir):
-            for file in files:
-                file_path = os.path.join(root, file)
+        for file_path in data_dir.rglob("*.*"):
+            if file_path.is_file():
                 print(f"Processing: {file_path}")
                 extracted = extract_text_from_file(file_path)
                 if extracted:
-                    print(f"Extraction successful: {file}")
+                    print(f"Extraction successful: {file_path.name}")
                 else:
-                    print(f"Failed to extract text from: {file}")
+                    print(f"Failed to extract text from: {file_path.name}")
