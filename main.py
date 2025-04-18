@@ -59,7 +59,7 @@ def extract_and_chunk(data_dir: str, chunks_dir: str = "outputs/chunks") -> List
                 continue
             chunks = measure_performance(
                 text,
-                lambda t: chunk_text(t, str(file_path), max_tokens=400, overlap_tokens=50),
+                lambda t: chunk_text(t, str(file_path), max_tokens=1500, overlap_tokens=100),
                 f"chunk_{file_path.name}"
             )
             all_chunks.extend(chunks)
@@ -71,9 +71,8 @@ def extract_and_chunk(data_dir: str, chunks_dir: str = "outputs/chunks") -> List
 
 def build_vector_db(chunks: List[dict], output_dir: str = "outputs") -> None:
     """Build vector database if it doesn't exist, measuring performance."""
-    index_path = Path(output_dir) / "vector_db.faiss"
-    metadata_path = Path(output_dir) / "metadata.json"
-    if index_path.exists() and metadata_path.exists():
+    vector_db_path = Path(output_dir) / "vector_db"
+    if vector_db_path.exists():
         logger.info("Vector database already exists. Skipping creation.")
         return
     logger.info("Creating vector database...")
@@ -84,11 +83,11 @@ def build_vector_db(chunks: List[dict], output_dir: str = "outputs") -> None:
     )
     logger.info("Vector database created.")
 
-def run_rag_interactive(index_path: str, metadata_path: str) -> None:
+def run_rag_interactive(vector_db_path: str) -> None:
     """Start an interactive RAG session."""
     logger.info("Starting interactive RAG session. Type 'exit' to quit.")
     try:
-        rag = RAGSystem(index_path, metadata_path)
+        rag = RAGSystem(vector_db_path)
         while True:
             question = input("🧠 You: ")
             if question.strip().lower() in ["exit", "quit"]:
@@ -176,28 +175,29 @@ def main(args: argparse.Namespace) -> None:
         logger.info(f"Pipeline completed in {time.time() - start_time:.2f} seconds.")
         return
 
-    # Handle full pipeline (data_dir and RAG)
-    all_chunks = extract_and_chunk(args.data_dir)
-    if not all_chunks and not args.rag:
-        logger.error("No chunks created and RAG not requested. Aborting pipeline.")
-        return
-
-    if all_chunks:
-        build_vector_db(all_chunks)
-
     if args.rag:
-        index_path = Path("outputs") / "vector_db.faiss"
-        metadata_path = Path("outputs") / "metadata.json"
-        if not (index_path.exists() and metadata_path.exists()):
+        vector_db_path = Path("outputs") / "vector_db"
+        if args.data_dir:
+            # Handle full pipeline (data_dir and RAG)
+            all_chunks = extract_and_chunk(args.data_dir)
+            if not all_chunks:
+                logger.error("No chunks created, check the path. Aborting pipeline.")
+                return
+
+            if all_chunks:
+                build_vector_db(all_chunks)
+
+        if not (vector_db_path.exists()):
             logger.error("Vector database not found. Run pipeline with data_dir first.")
             return
-        run_rag_interactive(str(index_path), str(metadata_path))
+        
+        run_rag_interactive(str(vector_db_path))
 
     logger.info(f"Pipeline completed in {time.time() - start_time:.2f} seconds.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NLP Pipeline for Dr. X's Publications")
-    parser.add_argument("--data-dir", default="data", help="Directory containing input files")
+    parser.add_argument("--data-dir", help="Directory containing input files")
     parser.add_argument("--input-file", help="Single text file to translate or summarize")
     parser.add_argument("--rag", action="store_true", help="Start interactive RAG session")
     parser.add_argument("--translate", action="store_true", help="Translate text")
