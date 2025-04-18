@@ -17,7 +17,6 @@ def create_vector_db(chunks, model_name="nomic-embed-text"):
                 page_content=chunk["text"],
                 metadata={
                     "file_name": chunk["file_name"],
-                    "page_number": chunk["page_number"],
                     "chunk_number": chunk["chunk_number"]
                 }
             )
@@ -65,7 +64,6 @@ def add_chunk_to_vector_db(chunk, model_name="nomic-embed-text"):
             page_content=chunk["text"],
             metadata={
                 "file_name": chunk["file_name"],
-                "page_number": chunk["page_number"],
                 "chunk_number": chunk["chunk_number"]
             }
         )
@@ -114,7 +112,6 @@ if __name__ == "__main__":
     # Example: Add a new chunk
     new_chunk = {
         "file_name": "example.txt",
-        "page_number": 1,
         "chunk_number": 999,
         "text": "This is a new chunk added to the vector database."
     }

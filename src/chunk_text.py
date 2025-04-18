@@ -19,20 +19,15 @@ def chunk_text(text, file_name, max_tokens=1000, overlap_tokens=100):
 
     chunks = []
     chunk_num = 1
-    avg_chars_per_page = 2000  # Estimate: adjust based on your documents
 
     # Create documents to get start_index metadata
     documents = text_splitter.create_documents([text])
     
     for doc in documents:
-        # Get start_index from document metadata
-        char_pos = doc.metadata.get("start_index", 0)
-        page_num = max(1, (char_pos // avg_chars_per_page) + 1)
 
         # Create chunk metadata
         chunks.append({
             "file_name": os.path.basename(file_name),
-            "page_number": page_num,
             "chunk_number": chunk_num,
             "text": doc.page_content.strip()
         })
