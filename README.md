@@ -3,7 +3,7 @@
 
 This project is a modular and extensible **Natural Language Processing (NLP) pipeline** that can:
 - Extract text from `.pdf`, `.docx`, `.txt`, `.csv`, `.xlsx` files
-- Chunk the text using `tiktoken`
+- Chunk the text using `langchain` split_text
 - Embed using `nomic-embed-text` via Ollama
 - Store embeddings in a FAISS vector store
 - Enable Retrieval-Augmented Generation (RAG) querying using `llama3`
@@ -27,7 +27,7 @@ ollama pull nomic-embed-text
 Make sure Ollama is running locally (`ollama serve` if necessary).
 
 ### 3. Prepare data
-Put all your input files (`.pdf`, `.docx`, `.txt`, `.csv`, `.xlsx`) inside the `data/` directory.
+Put all your input files (`.pdf`, `.docx`, `.txt`, `.csv`, `.xlsx`) inside the a directory.
 
 ---
 
@@ -35,7 +35,7 @@ Put all your input files (`.pdf`, `.docx`, `.txt`, `.csv`, `.xlsx`) inside the `
 
 ### Run the full pipeline (extract, chunk, embed, and enable RAG)
 ```bash
-python main.py --data-dir data --rag
+python main.py --data-dir "data-directory-path" --rag
 ```
 
 ### Translate a single document
@@ -58,35 +58,43 @@ python main.py --input-file "data/sample.pdf" --translate --summarize --target-l
 python main.py --rag
 ```
 
+### Add extra data to existing vector db
+```bash
+python main.py --add-data "file-path"
+```
+
 ---
 
 ## ⚙️ CLI Parameters
 
-| Argument              | Description                                                  |
-|-----------------------|--------------------------------------------------------------|
-| `--data-dir`          | Directory containing input files (default: `data/`)          |
-| `--input-file`        | Process a single file (translate or summarize)               |
-| `--rag`               | Start an interactive RAG chatbot session                     |
-| `--translate`         | Enable translation                                           |
-| `--summarize`         | Enable summarization                                         |
+| Argument              | Description                                                     |
+|-----------------------|-----------------------------------------------------------------|
+| `--data-dir`          | Directory containing input files (default: `data/`)             |
+| `--input-file`        | Process a single file (translate or summarize)                  |
+| `--rag`               | Start an interactive RAG chatbot session                        |
+| `--add-data`          | Add extra data to knowledge base                                |
+| `--translate`         | Enable translation                                              |
+| `--summarize`         | Enable summarization                                            |
 | `--target-lang`       | Language to translate into (default: `en`, options: `en`, `ar`) |
-| `--summary-strategy`  | `abstractive` (default) or `extractive` summarization        |
-| `--max-chars`         | Limit characters per file for summarization/translation      |
+| `--summary-strategy`  | `abstractive` (default) or `extractive` summarization           |
+| `--max-chars`         | Limit characters per file for summarization/translation         |
 
 ---
 
 ## 🔍 Pipeline Methodology
 
-- **Text Extraction**:  
-  - `.docx`: `python-docx`  
-  - `.pdf`: `PyMuPDF` (via `fitz`)  
-  - `.csv`/`.xlsx`: `pandas`  
-  - `.txt`: Native UTF-8 handling  
+- **Text Extraction**: 
+  - Used langchain document loaders. 
+  - `.docx`: `python-docx` ,`UnstructuredWordDocumentLoader` 
+  - `.pdf`: `PyMuPDFLoader` 
+  - `.csv`: `CSVLoader` 
+  - `xlxs`,`xls` ,`xlxm` : `UnstructuredExcelLoader`
+  - `.txt`: `TextLoader` 
 
 - **Chunking**:  
-  - Uses `tiktoken` tokenizer (`cl100k_base`)  
-  - Default chunk size: 400 tokens  
-  - Overlap: 50 tokens for context preservation  
+  - Uses `langchain` text splitter `RecursiveCharacterTextSplitter`
+  - Default chunk size: 1000 tokens  
+  - Overlap: 100 tokens for context preservation  
 
 - **Embedding**:  
   - Uses `nomic-embed-text` via Ollama API  
@@ -122,7 +130,7 @@ outputs/
 ├── summaries/             # Summarized output for each file
 ├── translated/            # Translated documents
 ├── metadata.json          # Metadata used in FAISS vector DB
-├── vector_db.faiss        # FAISS index storing embedded vectors
+├── vector_db              # FAISS index storing embedded vectors and documents
 ├── performance.json       # Token throughput performance logs
 └── pipeline.log           # Runtime logs for debugging
 ```
@@ -131,9 +139,9 @@ outputs/
 
 ## 🧠 Models Used
 
-| Task         | Model via Ollama           |
-|--------------|----------------------------|
-| Embedding    | `nomic-embed-text`         |
+| Task         | Model via Ollama                                                |
+|--------------|-----------------------------------------------------------------|
+| Embedding    | `nomic-embed-text`                                              |
 | Generation   | `llama3:8b` (or other variants like `llama3:7b`, `gemma`, etc.) |
 
 ---
@@ -143,6 +151,10 @@ outputs/
 Each NLP task (translation, chunking, embedding, summarizing) logs its processing speed in terms of tokens per second. This helps optimize model runtime and track latency over time.
 
 ---
+
+## 💡To improve
+
+- The .docx files contains tables. Tables can be extracted using docx library. Extracted table need to be splitted using langchains `MarkdownHeaderTextSplitter` for better results. The remaining paragraph texts using `RecursiveCharacterTextSplitter`. So chunking the table seperatly disconnects both. Need to integrate an optimal solution.
 
 ## 🪪 License
 
@@ -157,5 +169,3 @@ Built using:
 - 🦜 LangChain  
 - 🧠 Ollama  
 - 🧲 FAISS  
-- 🔢 tiktoken  
-- 📄 PyMuPDF, pandas, python-docx
