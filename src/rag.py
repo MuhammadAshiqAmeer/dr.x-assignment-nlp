@@ -1,57 +1,63 @@
-import faiss
 import json
-import numpy as np
+from pathlib import Path
+from langchain_community.vectorstores import FAISS
+from langchain_ollama import OllamaEmbeddings
 from langchain_core.prompts import PromptTemplate
 from langchain_ollama import OllamaLLM
 from langchain_core.runnables import Runnable
-from ollama import Client
 
 class RAGSystem:
-    def __init__(self, index_path="../outputs/vector_db.faiss", metadata_path="../outputs/metadata.json"):
-        self.index = faiss.read_index(index_path)
-        with open(metadata_path, "r", encoding="utf-8") as f:
-            self.metadata = json.load(f)
-
-        self.llm = OllamaLLM(model="llama3:8b")
-        self.embedder = Client()
-
-        self.prompt = PromptTemplate.from_template(
-        """You are an intelligent assistant designed to answer questions **based on the provided context only**.
-
-        Context:
-        {context}
-
-        Instructions:
-        - Do **not** assume the identity of the person in the context (e.g., resume).
-        - If the user greets (e.g., "hello", "hi"), respond politely(maximum 15 words).").
-
-        User: {question}
-        Assistant:"""
+    def __init__(self, vector_db_path="../outputs/vector_db"):
+        # Initialize embeddings
+        self.embeddings = OllamaEmbeddings(model="nomic-embed-text")
+        
+        # Load FAISS vector store
+        self.vector_store = FAISS.load_local(
+            vector_db_path,
+            self.embeddings,
+            allow_dangerous_deserialization=True
         )
 
+        # Initialize LLM
+        self.llm = OllamaLLM(model="llama3:8b")
+
+        # Define prompt template
+        self.prompt = PromptTemplate.from_template(
+            """You are an intelligent assistant designed to answer questions **based on the provided context only**.
+
+            Context:
+            {context}
+
+            Instructions:
+            - Do **not** assume the identity of the person in the context (e.g., resume).
+            - If the user greets (e.g., "hello", "hi"), respond politely (maximum 10 words).
+
+            User: {question}
+            Assistant:"""
+        )
+
+        # Create chain
         self.chain: Runnable = self.prompt | self.llm
         self.history = []
 
     def query(self, question: str) -> str:
-        # Embed the question
-        embedding_response = self.embedder.embeddings(model="nomic-embed-text", prompt=question)
-        query_embedding = np.array([embedding_response["embedding"]], dtype=np.float32)
-
-        # Search FAISS
-        distances, indices = self.index.search(query_embedding, k=5)
+        # Perform similarity search
+        docs = self.vector_store.similarity_search(question, k=5)
         
-        contexts = [self.metadata[i]["text"] for i in indices[0]]
+        # Extract contexts and metadata for debugging
+        contexts = []
+        for i, doc in enumerate(docs):
+            context = doc.page_content
+            contexts.append(context)
+            # Debug retrieved contexts (uncomment to enable)
+            # print(f"Context {i+1}: {context[:100]}... (metadata: {doc.metadata})")
 
-        # Debug retrieved contexts
-        # print(f"\nRetrieved contexts for '{question}':")
-        # for i, ctx in enumerate(contexts):
-        #     print(f"Context {i+1}: {ctx[:100]}... (distance: {distances[0][i]})")
-        # print('\n')
+        # Combine contexts
+        context_str = "\n".join(contexts)
 
-        
         # Invoke LLM
         result = self.chain.invoke({
-            "context": "\n".join(contexts),
+            "context": context_str,
             "question": question
         })
         answer = result
@@ -61,9 +67,9 @@ class RAGSystem:
         self.history.append({"role": "assistant", "content": answer})
         return answer
 
-
 if __name__ == "__main__":
-    rag = RAGSystem()
+    # Initialize RAG system with path to vector store
+    rag = RAGSystem(vector_db_path=Path(__file__).parent.parent / "outputs" / "vector_db")
     print("🔍 RAG QA System Ready. Type 'exit' to quit.\n")
 
     while True:
