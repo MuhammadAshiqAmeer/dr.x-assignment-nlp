@@ -1,172 +1,165 @@
+# 🧠 AI Engineer – NLP Pipeline & RAG Skills Assessment
 
-# 🧠 AI Engineer - NLP Skills Assessment
+A **modular, extensible NLP pipeline** that handles diverse document types (books, research papers, reports, PDFs, DOCX, CSV, Excel, TXT), and supports:
 
-This project is a modular and extensible **Natural Language Processing (NLP) pipeline** that can:
-- Extract text from `.pdf`, `.docx`, `.txt`, `.csv`, `.xlsx` files
-- Chunk the text using `langchain` split_text
-- Embed using `nomic-embed-text` via Ollama
-- Store embeddings in a FAISS vector store
-- Enable Retrieval-Augmented Generation (RAG) querying using `llama3`
-- Translate and summarize documents
-- Log performance tokens/second for profiling
-
----
-
-## 🔧 Setup Instructions
-
-### 1. Install Python dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Install and configure Ollama
-```bash
-ollama pull llama3
-ollama pull nomic-embed-text
-```
-Make sure Ollama is running locally (`ollama serve` if necessary).
-
-### 3. Prepare data
-Put all your input files (`.pdf`, `.docx`, `.txt`, `.csv`, `.xlsx`) inside the a directory.
+- **Text Extraction** from `.pdf`, `.docx`, `.txt`, `.csv`, `.xlsx`  
+- **Table Extraction & Chunking** from Word documents  
+- **Chunking** with smart overlaps & semantic separators  
+- **Embedding** via `nomic-embed-text` (Ollama) → FAISS vector store  
+- **Retrieval‑Augmented Generation (RAG)** using `llama3:8b`  
+- **Translation** with automatic language detection, single‑pass fluency refinement  
+- **Summarization** (abstractive or extractive) with structured prompts, recursive reduction  
+- **Progress visualization** on console with `tqdm`  
+- **Performance logging** (tokens/sec) for each stage  
 
 ---
 
-## 🚀 Usage Examples
+## 🔧 Setup
 
-### Run the full pipeline (extract, chunk, embed, and enable RAG)
+1. **Clone & install**  
+   ```bash
+   git clone <repo-url>
+   cd <repo>
+   pip install -r requirements.txt
+   ```  
+2. **Pull Ollama models**  
+   ```bash
+   ollama pull llama3:8b
+   ollama pull nomic-embed-text
+   ```  
+3. **Run Ollama server if needed**  
+   ```bash
+   ollama serve
+   ```  
+4. **Prepare your data** — place all input files under `data/` (PDF, DOCX, TXT, CSV, XLSX).
+
+---
+
+## 🚀 Quickstart
+
+### Full pipeline (extract → chunk → embed → RAG)
 ```bash
-python main.py --data-dir "data-directory-path" --rag
+python main.py --data-dir data/ --rag
 ```
 
-### Translate a single document
+### Translate a document
 ```bash
-python main.py --input-file "data/sample.pdf" --translate --target-lang ar
+python main.py --input-file data/report.pdf --translate --target-lang en
 ```
 
-### Summarize a single document
+### Summarize a document
 ```bash
-python main.py --input-file "data/sample.pdf" --summarize --summary-strategy abstractive
+python main.py --input-file data/book.txt --summarize --summary-strategy abstractive
 ```
 
-### Translate & Summarize a document in one go
+### Translate & Summarize in one command
 ```bash
-python main.py --input-file "data/sample.pdf" --translate --summarize --target-lang en --summary-strategy extractive
+python main.py --input-file data/paper.pdf --translate --summarize --target-lang en --summary-strategy extractive
 ```
 
-### Start RAG-only chat (FAISS DB must already exist)
+### Interactive RAG chat (requires existing FAISS DB)
 ```bash
 python main.py --rag
 ```
 
-### Add extra data to existing vector db
+### Add more documents to vector DB
 ```bash
-python main.py --add-data "file-path"
+python main.py --add-data data/new-files/
 ```
 
 ---
 
-## ⚙️ CLI Parameters
+## ⚙️ CLI Arguments
 
-| Argument              | Description                                                                         |
-|-----------------------|-------------------------------------------------------------------------------------|
-| `--data-dir`          | Directory containing input files (default: `data/`)                                 |
-| `--input-file`        | Process a single file (translate or summarize)                                      |
-| `--rag`               | Start an interactive RAG chatbot session                                            |
-| `--add-data`          | Add extra data to knowledge base                                                    |
-| `--translate`         | Enable translation                                                                  |
-| `--summarize`         | Enable summarization                                                                |
-| `--target-lang`       | Language to translate into (default: `en`, options: `en`, `ar`)                     |
-| `--summary-strategy`  | `abstractive` (default) or `extractive` summarization                               |
-| `--max-chars`         | Limit characters per file for summarization/translation. Default full text          |
-
----
-
-## 🔍 Pipeline Methodology
-
-- **Text Extraction**: 
-  - Used langchain document loaders. 
-  - `.docx`: `python-docx` ,`UnstructuredWordDocumentLoader` 
-  - `.pdf`: `PyMuPDFLoader` 
-  - `.csv`: `CSVLoader` 
-  - `xlxs`,`xls` ,`xlxm` : `UnstructuredExcelLoader`
-  - `.txt`: `TextLoader` 
-
-- **Chunking**:  
-  - Uses `langchain` text splitter `RecursiveCharacterTextSplitter`
-  - Default chunk size: 1000 tokens  
-  - Overlap: 100 tokens for context preservation  
-
-- **Embedding**:  
-  - Uses `nomic-embed-text` via Ollama API  
-  - Stores vectors in FAISS (L2 norm)  
-  - Metadata saved in JSON alongside `.faiss` index  
-
-- **RAG (Retrieval-Augmented Generation)**:  
-  - Top-k chunk retrieval  
-  - Merged context + user query  
-  - Passed to `llama3` via Ollama to generate response  
-
-- **Translation**:  
-  - Automatically detects source language using `langdetect`  
-  - Translates to `target_lang`  
-  - Fluency improved using post-pass via `llama3`  
-
-- **Summarization**:  
-  - Recursive chunked summarization for long documents  
-  - `abstractive` or `extractive` supported  
-  - ROUGE evaluation against reference  
-
-- **Performance Logging**:  
-  - Logs token throughput (tokens/sec) for each task  
-  - Stored in `outputs/performance.json`  
+| Flag                   | Description                                                            |
+|------------------------|------------------------------------------------------------------------|
+| `--data-dir`           | Directory of input files (default `data/`)                             |
+| `--input-file`         | Single file to translate/summarize                                     |
+| `--rag`                | Launch interactive RAG chat                                            |
+| `--add-data`           | Add files to existing FAISS vector store                               |
+| `--translate`          | Perform translation                                                    |
+| `--target-lang`        | Translation target (default `en`)                                      |
+| `--summarize`          | Perform summarization                                                  |
+| `--summary-strategy`   | `abstractive` (default) or `extractive`                                |
+| `--max-chars`          | Max characters per chunk (default full text)                           |
 
 ---
 
-## 📁 Output Folder Structure
+## 🔍 Pipeline Overview
+
+1. **Text Extraction**  
+   - PDF → `PyMuPDFLoader`  
+   - DOCX → `python-docx` + table extractor  
+   - CSV → `CSVLoader`  
+   - Excel → `UnstructuredExcelLoader`  
+   - TXT → `TextLoader`
+
+2. **Table Extraction**  
+   - Detect `.docx` tables  
+   - Chunk by rows (`rows_per_chunk`)  
+   - Export each as JSON with headers & rows
+
+3. **Chunking**  
+   - `RecursiveCharacterTextSplitter`  
+   - `chunk_size` (chars) + `chunk_overlap`  
+   - Splits at `\n `, `. `, etc.
+
+4. **Embedding**  
+   - `nomic-embed-text` via Ollama  
+   - Store in FAISS (L2 norm) + JSON metadata
+
+5. **RAG**  
+   - Top‑k retrieval of chunks  
+   - Concatenate with user query  
+   - Generate answer via `llama3:8b`
+
+6. **Translation**  
+   - Detect source with `langdetect`  
+   - Single‑pass prompt: translate + refine fluency  
+
+7. **Summarization**  
+   - Chapter‑ or character‑based splitting when possible  
+   - Structured prompts (plot points, characters, themes)  
+   - Recursive summarization until target size  
+   - Support for both abstractive & extractive  
+
+8. **Progress & Performance**  
+   - `tqdm` progress bars for chunk processing  
+   - Log tokens/sec in `outputs/performance.json`  
+
+---
+
+## 📁 Outputs
 
 ```
 outputs/
-├── chunks/                # JSON files of chunked document content
-├── summaries/             # Summarized output for each file
-├── translated/            # Translated documents
-├── metadata.json          # Metadata used in FAISS vector DB
-├── vector_db              # FAISS index storing embedded vectors and documents
-├── performance.json       # Token throughput performance logs
-└── pipeline.log           # Runtime logs for debugging
+├── chunks/             # JSON chunks (text & tables)
+├── summaries/          # Summaries per file
+├── translated/         # Translated outputs
+├── metadata.json       # FAISS metadata
+├── vector_db/          # FAISS index files
+├── performance.json    # Token throughput logs
+└── pipeline.log        # Detailed runtime logs
 ```
 
 ---
 
-## 🧠 Models Used
+## 🧠 Models
 
-| Task         | Model via Ollama                                                |
-|--------------|-----------------------------------------------------------------|
-| Embedding    | `nomic-embed-text`                                              |
-| Generation   | `llama3:8b` (or other variants like `llama3:7b`, `gemma`, etc.) |
-
----
-
-## 📊 Performance
-
-Each NLP task (translation, chunking, embedding, summarizing) logs its processing speed in terms of tokens per second. This helps optimize model runtime and track latency over time.
+| Task        | Model (via Ollama)              |
+|-------------|---------------------------------|
+| Embedding   | `nomic-embed-text`              |
+| Generation  | `llama3:8b` (variants available)|
 
 ---
-
-## 💡To improve(pending)
-
-- The `.docx` files contain tables that can be extracted using the `python-docx` library. For better results, tables should be chunked using LangChain’s `MarkdownHeaderTextSplitter`, while the remaining paragraph text can be processed using the `RecursiveCharacterTextSplitter`. However, handling tables separately currently breaks the flow between table content and the surrounding text. An optimal integration strategy to preserve this continuity is still pending.
-
 
 ## 🪪 License
 
-MIT License – open-source and free for educational, personal, and research use.
+MIT — free for educational, personal, and research use.
 
 ---
 
 ## 🙋‍♂️ Author
 
-Created by **Muhammad Ashiq Ameer**  
-Built using:
-- 🦜 LangChain  
-- 🧠 Ollama  
-- 🧲 FAISS  
+**Muhammad Ashiq Ameer**  
+Built with LangChain · Ollama · FAISS  
