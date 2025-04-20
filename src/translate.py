@@ -1,51 +1,46 @@
 from langdetect import detect, LangDetectException
 from langchain_ollama import OllamaLLM
-import tiktoken
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-def translate_text(text, target_lang="en", max_tokens=3500):
-    """Translate long text by chunking and improving fluency per chunk."""
+llm = OllamaLLM(model="llama3:8b", temperature=0.3)
+
+def translate_text(text, target_lang="en", max_length=3500):
     try:
         source_lang = detect(text)
     except LangDetectException:
         return "Unable to detect source language."
 
-    llm = OllamaLLM(model="llama3:8b")
-    encoding = tiktoken.get_encoding("cl100k_base")
-    tokens = encoding.encode(text)
-    
-    translated_chunks = []
-    for i in range(0, len(tokens), max_tokens):
-        chunk_tokens = tokens[i:i + max_tokens]
-        chunk_text = encoding.decode(chunk_tokens)
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=max_length,
+        chunk_overlap=100,
+        length_function=len,
+        separators=["\n\n", "\n", ". ", " ", ""]
+    )
 
-        # Step 1: Translation
-        translate_prompt = (
-            f"Translate the following text from {source_lang} to {target_lang}, maintaining structure and fluency. "
-            f"Strictly return only the translated text.\n\n{chunk_text}"
-        )
+    chunks = splitter.split_text(text)
+    results = []
+
+    for i, chunk in enumerate(chunks, 1):
+        prompt = f"""
+        Translate and improve the fluency of the following text from {source_lang} to {target_lang}. 
+        Maintain original meaning, structure, and tone. Return only the translated and refined version.
+        strictly give the target text only.
+
+        Text:
+        \"\"\"{chunk}\"\"\"
+        """
         try:
-            translated = llm.invoke(translate_prompt).strip()
+            translated = llm.invoke(prompt).strip()
         except Exception as e:
-            translated = f"[Translation failed: {e}]"
+            translated = f"[Error in chunk {i}: {e}]"
 
-        # Step 2: Fluency improvement
-        fluency_prompt = (
-            f"Improve the grammar and fluency of this translated text from {source_lang} to {target_lang}. "
-            f"Strictly return only the improved text.\n\n{translated}"
-        )
-        try:
-            improved = llm.invoke(fluency_prompt).strip()
-        except Exception as e:
-            improved = f"[Fluency improvement failed: {e}]"
+        results.append(translated)
 
-        translated_chunks.append(improved)
-
-    return "\n\n".join(translated_chunks)
-
+    return "\n\n".join(results)
 
 
 if __name__ == "__main__":
-    print("Language Translator with Fluency Enhancement (Ollama-powered)")
+    print("🌍 Language Translator with Fluency Enhancement (Ollama-powered)")
     print("Type 'exit' to quit.\n")
 
     while True:
@@ -54,5 +49,5 @@ if __name__ == "__main__":
             print("👋 Exiting.")
             break
 
-        result = translate_text(user_input)
-        print(f"\nTranslated & Improved:\n{result}\n")
+        output = translate_text(user_input)
+        print(f"\n✅ Translated & Refined:\n{output}\n")
