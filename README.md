@@ -14,57 +14,55 @@ A **modular, extensible NLP pipeline** that handles diverse document types (book
 
 ---
 
-## 🔧 Setup
+## 🔧 Setup Instructions
 
-1. **Clone & install**  
-   ```bash
-   git clone <repo-url>
-   cd <repo>
-   pip install -r requirements.txt
-   ```  
-2. **Pull Ollama models**  
-   ```bash
-   ollama pull llama3:8b
-   ollama pull nomic-embed-text
-   ```  
-3. **Run Ollama server if needed**  
-   ```bash
-   ollama serve
-   ```  
-4. **Prepare your data** — place all input files under `data/` (PDF, DOCX, TXT, CSV, XLSX).
+### 1. Install Python dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Install and configure Ollama
+```bash
+ollama pull llama3
+ollama pull nomic-embed-text
+```
+Make sure Ollama is running locally (`ollama serve` if necessary).
+
+### 3. Prepare data
+Put all your input files (`.pdf`, `.docx`, `.txt`, `.csv`, `.xlsx`) inside a directory.
 
 ---
 
-## 🚀 Quickstart
+## 🚀 Usage Examples
 
-### Full pipeline (extract → chunk → embed → RAG)
+### Run the full pipeline (extract, chunk, embed, and enable RAG)
 ```bash
-python main.py --data-dir data/ --rag
+python main.py --data-dir "data-directory-path" --rag
 ```
 
-### Translate a document
+### Translate a single document
 ```bash
-python main.py --input-file data/report.pdf --translate --target-lang en
+python main.py --input-file "data/sample.pdf" --translate --target-lang ar
 ```
 
-### Summarize a document
+### Summarize a single document
 ```bash
-python main.py --input-file data/book.txt --summarize --summary-strategy abstractive
+python main.py --input-file "data/sample.pdf" --summarize --summary-strategy abstractive
 ```
 
-### Translate & Summarize in one command
+### Translate & Summarize a document in one go
 ```bash
-python main.py --input-file data/paper.pdf --translate --summarize --target-lang en --summary-strategy extractive
+python main.py --input-file "data/sample.pdf" --translate --summarize --target-lang en --summary-strategy extractive
 ```
 
-### Interactive RAG chat (requires existing FAISS DB)
+### Start RAG-only chat (FAISS DB must already exist)
 ```bash
 python main.py --rag
 ```
 
-### Add more documents to vector DB
+### Add extra data to existing vector db
 ```bash
-python main.py --add-data data/new-files/
+python main.py --add-data "file-path"
 ```
 
 ---
@@ -102,7 +100,7 @@ python main.py --add-data data/new-files/
 3. **Chunking**  
    - `RecursiveCharacterTextSplitter`  
    - `chunk_size` (chars) + `chunk_overlap`  
-   - Splits at `\n `, `. `, etc.
+   - Splits at `\n`, ` `, `. `, etc.
 
 4. **Embedding**  
    - `nomic-embed-text` via Ollama  
