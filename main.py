@@ -12,6 +12,7 @@ from src.rag import RAGSystem
 from src.translate import translate_text
 from src.summarize import summarize_text, evaluate_summary
 from src.utils import measure_performance, save_text
+from src.extract_table_and_chunk_docx import process_file 
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_core.documents import Document
@@ -58,22 +59,36 @@ def extract_and_chunk(data_dir: str, chunks_dir: str = "outputs/chunks") -> List
             continue
         logger.info(f"Processing file: {file_path}")
         try:
-            text = measure_performance(
-                str(file_path),
-                lambda _: extract_text_from_file(str(file_path)),
-                f"extract_{file_path.name}"
-            )
-            if not text or not text.strip():
-                logger.warning(f"Empty or failed extraction: {file_path}")
-                continue
-            chunks = measure_performance(
-                text,
-                lambda t: chunk_text(t, str(file_path), max_tokens=1500, overlap_tokens=100),
-                f"chunk_{file_path.name}"
-            )
-            all_chunks.extend(chunks)
-            save_chunks(chunks, str(file_path), chunks_dir)
-            logger.info(f"Extracted and chunked {len(chunks)} chunks from {file_path}")
+            extension = file_path.suffix.lower()
+            if extension == '.docx':
+                # Handle .docx files with table extraction
+                chunks = measure_performance(
+                    str(file_path),
+                    lambda _: process_file(str(file_path), chunks_dir),
+                    f"extract_and_chunk_docx_{file_path.name}"
+                )
+            else:
+                # Handle other file types with text extraction
+                text = measure_performance(
+                    str(file_path),
+                    lambda _: extract_text_from_file(str(file_path)),
+                    f"extract_{file_path.name}"
+                )
+                if not text or not text.strip():
+                    logger.warning(f"Empty or failed extraction: {file_path}")
+                    continue
+                chunks = measure_performance(
+                    text,
+                    lambda t: chunk_text(t, str(file_path), max_tokens=1500, overlap_tokens=100),
+                    f"chunk_{file_path.name}"
+                )
+                save_chunks(chunks, str(file_path), chunks_dir)
+            
+            if chunks:
+                all_chunks.extend(chunks)
+                logger.info(f"Extracted and chunked {len(chunks)} chunks from {file_path}")
+            else:
+                logger.warning(f"No chunks created for {file_path}")
         except Exception as e:
             logger.error(f"Error processing {file_path}: {e}")
     return all_chunks
@@ -108,28 +123,35 @@ def add_single_document(file_path: str, vector_db_path: str = "outputs/vector_db
 
     logger.info(f"Adding single document: {file_path}")
     try:
-        # Extract text
-        text = measure_performance(
-            str(file_path),
-            lambda _: extract_text_from_file(str(file_path)),
-            f"extract_{file_path.name}"
-        )
-        if not text or not text.strip():
-            logger.error(f"Empty or failed extraction: {file_path}")
-            return
+        extension = file_path.suffix.lower()
+        if extension == '.docx':
+            # Handle .docx files with table extraction
+            chunks = measure_performance(
+                str(file_path),
+                lambda _: process_file(str(file_path), chunks_dir),
+                f"extract_and_chunk_docx_{file_path.name}"
+            )
+        else:
+            # Handle other file types with text extraction
+            text = measure_performance(
+                str(file_path),
+                lambda _: extract_text_from_file(str(file_path)),
+                f"extract_{file_path.name}"
+            )
+            if not text or not text.strip():
+                logger.error(f"Empty or failed extraction: {file_path}")
+                return
+            chunks = measure_performance(
+                text,
+                lambda t: chunk_text(t, str(file_path), max_tokens=1500, overlap_tokens=100),
+                f"chunk_{file_path.name}"
+            )
+            save_chunks(chunks, str(file_path), chunks_dir)
 
-        # Chunk text
-        chunks = measure_performance(
-            text,
-            lambda t: chunk_text(t, str(file_path), max_tokens=1500, overlap_tokens=100),
-            f"chunk_{file_path.name}"
-        )
         if not chunks:
             logger.error(f"No chunks created for {file_path}")
             return
 
-        # Save chunks
-        save_chunks(chunks, str(file_path), chunks_dir)
         logger.info(f"Extracted and chunked {len(chunks)} chunks from {file_path}")
 
         # Load existing FAISS vector store
@@ -142,8 +164,9 @@ def add_single_document(file_path: str, vector_db_path: str = "outputs/vector_db
                 page_content=chunk["text"],
                 metadata={
                     "file_name": chunk["file_name"],
-                    "page_number": chunk["page_number"],
-                    "chunk_number": chunk["chunk_number"]
+                    "page_number": chunk.get("page_number", 0),
+                    "chunk_number": chunk["chunk_number"],
+                    "section_type": chunk.get("section_type", "text")
                 }
             ) for chunk in chunks
         ]
