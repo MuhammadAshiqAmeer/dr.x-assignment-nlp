@@ -1,70 +1,75 @@
 from langchain_ollama import OllamaLLM
 from rouge_score import rouge_scorer
-import tiktoken
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from tqdm import tqdm
 
-def recursive_summarize(texts, strategy="abstractive", max_tokens=3500):
-    """Recursively summarize a list of texts until they fit into a final summary."""
-    llm = OllamaLLM(model="llama3:8b")
-    encoding = tiktoken.get_encoding("cl100k_base")
 
-    def summarize_chunk(chunk):
-        if strategy == "abstractive":
-            prompt = f"Provide a concise summary of the following text, capturing the key ideas. Strictly provide the abstrated text only:\n\n{chunk}"
-        else:
-            prompt = f"Extract the most important sentences from the following text. Strictly provide the extracted text only:\n\n{chunk}"
-        return llm.invoke(prompt).strip()
+llm = OllamaLLM(model="llama3:8b", temperature=0.3)
 
-    # Step 1: Summarize each chunk
-    summaries = []
-    for text in texts:
-        summaries.append(summarize_chunk(text))
+def split_text(text, max_length=8000):
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=max_length,
+        chunk_overlap=200,
+        length_function=len,
+        separators=["\n\n", "\n", ". ", " ", ""]
+    )
+    return splitter.split_text(text)
 
-    # Step 2: If the combined summary is too long, repeat recursively
-    combined = "\n\n".join(summaries)
-    if len(encoding.encode(combined)) > max_tokens:
-        # Chunk again and recursively summarize
-        return recursive_summarize(split_text(combined, max_tokens), strategy, max_tokens)
+def summarize_chunk(chunk, strategy="abstractive"):
+    chunk = chunk.strip()
+    if not chunk:
+        return ""
+
+    if strategy == "abstractive":
+        prompt = f"""
+        You are a highly intelligent summarization system.
+
+        Summarize the following passage into a clear, structured summary, identifying and including:
+        
+        - Key points, findings, or events
+        - Main subjects (e.g. people, concepts, or entities)
+        - Purpose or objective of the text (if relevant)
+        - Important conclusions, outcomes, or messages
+
+        Adapt your summary based on the content type (e.g., story, research, report, article) — be concise, accurate, and faithful to the source.
+
+        Passage:
+        \"\"\"{chunk}\"\"\"
+
+        Structured Summary:
+        """
     else:
-        # Final summary
-        return summarize_chunk(combined)
+        prompt = f"Extract the most important sentences from this passage:\n\n{chunk}\n\nExtracted Summary:"
 
-def split_text(text, max_tokens=3500):
-    """Split a long text into token-based chunks."""
-    encoding = tiktoken.get_encoding("cl100k_base")
-    tokens = encoding.encode(text)
-    chunks = []
-    for i in range(0, len(tokens), max_tokens):
-        chunk_tokens = tokens[i:i + max_tokens]
-        chunk = encoding.decode(chunk_tokens)
-        chunks.append(chunk)
-    return chunks
+    return llm.invoke(prompt).strip()
 
-def summarize_text(text, strategy="abstractive", max_tokens=3500):
-    """Entry point for summarizing long text."""
-    chunks = split_text(text, max_tokens=max_tokens)
-    return recursive_summarize(chunks, strategy, max_tokens)
+
+def recursive_summarize(texts, strategy="abstractive", max_length=8000, depth=0, max_depth=2):
+    print(f"\n📚 Summarizing {len(texts)} chunks at depth {depth}...")
+    summaries = [summarize_chunk(text, strategy) for text in tqdm(texts) if text.strip()]
+    combined = "\n\n".join(summaries)
+
+    if len(combined) > max_length and depth < max_depth:
+        chunks = split_text(combined, max_length)
+        return recursive_summarize(chunks, strategy, max_length, depth + 1, max_depth)
+    else:
+        return summarize_chunk(combined, strategy)
+
+def summarize_text(text, strategy="abstractive", max_length=8000):
+    chunks = split_text(text, max_length)
+    return recursive_summarize(chunks, strategy, max_length)
 
 def evaluate_summary(reference, summary):
     scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
     return scorer.score(reference, summary)
 
-
-
 if __name__ == "__main__":
-    print("Summarization and Evaluation System Ready.")
-    
-    # Example text (replace with your own text to test)
-    text_to_summarize = """
-    Stable isotope analysis (SIA) is used extensively in marine and ecological studies.
-    The method uses isotopic compositions of elements such as carbon (δ13C), nitrogen (δ15N), and oxygen (δ18O) to study various aspects like animal movement, trophic dynamics, and ecosystem function.
-    The use of stable isotopes in oceanography helps identify the sources of organic carbon in marine ecosystems and track nutrient pathways.
-    """
+    from extract_text import extract_text_from_file
 
-    # Summarize the text
-    summary = summarize_text(text_to_summarize)
-    print(f"Summary: {summary}\n")
-    
-    # Evaluate summary (example reference)
-    reference_text = "This study uses stable isotope analysis to track the movement and trophic interactions of marine organisms, focusing on isotopes like δ13C and δ15N."
-    evaluation_scores = evaluate_summary(reference_text, summary)
-    print(f"ROUGE Scores: {evaluation_scores}")
+    print("📖 Loading file")
+    raw_text = extract_text_from_file("D:/projects/dr.x-assignment/data/new-approaches-and-procedures-for-cancer-treatment.pdf")
+
+    print("🧹 Cleaning and preparing text...")
+    summary = summarize_text(raw_text, strategy="abstractive")
+
+    print(f"\n📝 Final Summary:\n{summary}\n")

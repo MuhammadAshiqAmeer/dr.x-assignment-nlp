@@ -220,7 +220,7 @@ def process_text(text: str, file_name: str, target_lang: str = None, summary_str
             lambda t: translate_text(t, target_lang=target_lang),
             f"translate_{file_name}"
         )
-        logger.info(f"Translated (first 100 chars): {translated[:100]}...")
+        # logger.info(f"Translated (first 100 chars): {translated[:100]}...")
 
     if summary_strategy:
         text_to_summarize = translated if target_lang else text
@@ -230,12 +230,12 @@ def process_text(text: str, file_name: str, target_lang: str = None, summary_str
             lambda t: summarize_text(t, strategy=summary_strategy),
             f"summarize_{file_name}"
         )
-        logger.info(f"Summary (first 100 chars): {summary[:100]}...")
-        logger.info("Evaluating summary...")
-        scores = evaluate_summary(text_to_summarize[:1000], summary)
-        logger.info("ROUGE Scores:")
-        for k, v in scores.items():
-            logger.info(f"{k.upper()}: P={v.precision:.2f}, R={v.recall:.2f}, F1={v.fmeasure:.2f}")
+        # logger.info(f"Summary (first 100 chars): {summary[:100]}...")
+        # logger.info("Evaluating summary...")
+        # scores = evaluate_summary(text_to_summarize[:1000], summary)
+        # logger.info("ROUGE Scores:")
+        # for k, v in scores.items():
+        #     logger.info(f"{k.upper()}: P={v.precision:.2f}, R={v.recall:.2f}, F1={v.fmeasure:.2f}")
 
     return translated, summary, scores
 
