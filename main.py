@@ -271,7 +271,7 @@ def main(args: argparse.Namespace) -> None:
                 logger.error(f"Empty or failed extraction: {file_path}")
                 return
             translated, summary, scores = process_text(
-                text[:args.max_chars],
+                text[:args.max_chars] if args.max_chars else text,
                 file_path.name,
                 args.target_lang if args.translate else None,
                 args.summary_strategy if args.summarize else None
@@ -321,6 +321,6 @@ if __name__ == "__main__":
     parser.add_argument("--summarize", action="store_true", help="Summarize text")
     parser.add_argument("--target-lang", default="en", choices=["en", "ar"], help="Target language for translation")
     parser.add_argument("--summary-strategy", default="abstractive", choices=["abstractive", "extractive"], help="Summarization strategy")
-    parser.add_argument("--max-chars", type=int, default=5000, help="Max characters for translation/summarization")
+    parser.add_argument("--max-chars", type=int, help="Max characters for translation/summarization")
     args = parser.parse_args()
     main(args)

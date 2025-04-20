@@ -22,7 +22,7 @@ def summarize_chunk(chunk, strategy="abstractive"):
 
     if strategy == "abstractive":
         prompt = f"""
-        You are a highly intelligent summarization system.
+        You are a highly intelligent summarization system. strictly give the target text only.
 
         Summarize the following passage into a clear, structured summary, identifying and including:
         
@@ -31,7 +31,7 @@ def summarize_chunk(chunk, strategy="abstractive"):
         - Purpose or objective of the text (if relevant)
         - Important conclusions, outcomes, or messages
 
-        Adapt your summary based on the content type (e.g., story, research, report, article) — be concise, accurate, and faithful to the source.
+        Adapt  and add your summary based on the content type (e.g., story, research, report, article) — be concise, accurate, and faithful to the source.
 
         Passage:
         \"\"\"{chunk}\"\"\"
@@ -44,7 +44,7 @@ def summarize_chunk(chunk, strategy="abstractive"):
     return llm.invoke(prompt).strip()
 
 
-def recursive_summarize(texts, strategy="abstractive", max_length=8000, depth=0, max_depth=2):
+def recursive_summarize(texts, strategy="abstractive", max_length=8000, depth=0, max_depth=10):
     print(f"\n📚 Summarizing {len(texts)} chunks at depth {depth}...")
     summaries = [summarize_chunk(text, strategy) for text in tqdm(texts) if text.strip()]
     combined = "\n\n".join(summaries)
@@ -67,9 +67,9 @@ if __name__ == "__main__":
     from extract_text import extract_text_from_file
 
     print("📖 Loading file")
-    raw_text = extract_text_from_file("D:/projects/dr.x-assignment/data/new-approaches-and-procedures-for-cancer-treatment.pdf")
+    raw_text = extract_text_from_file("../data/The-Alchemist.pdf")
 
     print("🧹 Cleaning and preparing text...")
-    summary = summarize_text(raw_text, strategy="abstractive")
+    summary = summarize_text(raw_text, strategy="extractive")
 
     print(f"\n📝 Final Summary:\n{summary}\n")

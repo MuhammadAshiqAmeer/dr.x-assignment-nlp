@@ -67,17 +67,17 @@ python main.py --add-data "file-path"
 
 ## ⚙️ CLI Parameters
 
-| Argument              | Description                                                     |
-|-----------------------|-----------------------------------------------------------------|
-| `--data-dir`          | Directory containing input files (default: `data/`)             |
-| `--input-file`        | Process a single file (translate or summarize)                  |
-| `--rag`               | Start an interactive RAG chatbot session                        |
-| `--add-data`          | Add extra data to knowledge base                                |
-| `--translate`         | Enable translation                                              |
-| `--summarize`         | Enable summarization                                            |
-| `--target-lang`       | Language to translate into (default: `en`, options: `en`, `ar`) |
-| `--summary-strategy`  | `abstractive` (default) or `extractive` summarization           |
-| `--max-chars`         | Limit characters per file for summarization/translation         |
+| Argument              | Description                                                                         |
+|-----------------------|-------------------------------------------------------------------------------------|
+| `--data-dir`          | Directory containing input files (default: `data/`)                                 |
+| `--input-file`        | Process a single file (translate or summarize)                                      |
+| `--rag`               | Start an interactive RAG chatbot session                                            |
+| `--add-data`          | Add extra data to knowledge base                                                    |
+| `--translate`         | Enable translation                                                                  |
+| `--summarize`         | Enable summarization                                                                |
+| `--target-lang`       | Language to translate into (default: `en`, options: `en`, `ar`)                     |
+| `--summary-strategy`  | `abstractive` (default) or `extractive` summarization                               |
+| `--max-chars`         | Limit characters per file for summarization/translation. Default full text          |
 
 ---
 
